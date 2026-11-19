@@ -69,6 +69,12 @@ npm run test:e2e
 - 기존 Ubuntu 24.04 `linux-arm64` 에이전트와 `/opt/yoom-ci`의 Node를 사용한다. 브라우저 바이너리는 Playwright가, ATK 등 네이티브 라이브러리와 한글 글꼴은 `scripts/prepare-chromium-runtime.sh`가 준비한다. 이 스크립트는 에이전트의 APT 저장소에서 필요한 패키지를 내려받아 현재 작업공간의 `artifacts/chromium-runtime/`에만 푼다. 호스트 패키지 설치·sudo·Docker가 필요 없다. 에이전트는 유효한 APT 인덱스와 패키지 미러·npm·Playwright 다운로드 접근이 필요하다. 작업공간의 라이브러리와 글꼴은 브라우저 검사 단계에서만 사용한다.
 - Jenkins의 Tests 탭에서 단위·브라우저 검사 결과를 확인한다(JUnit 플러그인 필요). 성공한 빌드는 새 세션에서 복원한 화면 `roundtrip.png`를 남긴다. 브라우저 검사 실패 시 `trace.zip`을 내려받고 `npx playwright show-trace <파일경로>`로 실패 직전 클릭과 화면을 재생한다. CI는 검증만 하며 공개 배포하지 않는다.
 
+### 작업 브랜치와 병합
+
+새 클론에서는 `git config --local core.hooksPath .githooks`로 저장소의 `pre-push` 훅을 활성화한다. 이미 다른 훅을 사용 중인 클론에서는 기존 설정을 덮어쓰지 말고 먼저 통합한다. 이 훅은 작업 브랜치 푸시는 허용하고, 원격 `main`을 갱신하거나 삭제하는 푸시는 거부한다.
+
+기본 절차는 **작업 브랜치 → PR → 사용자 검수 → 명시적 병합 지시**다. 로컬 훅은 GitHub에서의 병합을 통제하지 않는다. 에이전트의 병합 승인 기준은 [작업 계약](AGENTS.md#브랜치와-병합-승인)을 따른다.
+
 ### GitHub Pages 배포
 
 배포는 수동이다. 저장소의 Settings → Pages에서 `Deploy from a branch` → `gh-pages` → `/(root)`를 사용한다. 배포 권한이 있는 작업자가 깨끗한 `main`에서 위 검증 절차를 마친 뒤, **테스트한 `apps/web/dist/`를 재빌드하지 않고** 다음 명령으로 게시한다.
