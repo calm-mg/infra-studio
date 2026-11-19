@@ -6,7 +6,7 @@ export function exampleDesign(): Design {
     blocks: [
       { id: 'client', role: '클라이언트', name: '웹 클라이언트', technology: '브라우저', note: '', x: 0, y: 0 },
       { id: 'lb', role: '로드 밸런서', name: '진입 LB', technology: '', note: '', x: 270, y: 0 },
-      { id: 'service', role: '앱 서버', name: '서비스 백엔드', technology: 'Spring Boot', note: 'EC2에서 실행한다. 실행 위치는 요청이나 로그의 목적지와 구분해 기록했다.', x: 540, y: 0 },
+      { id: 'service', role: '앱 서버', name: '서비스 백엔드', technology: 'Spring Boot', runtimeLocation: 'EC2', note: '', x: 540, y: 0 },
       { id: 'db', role: '데이터베이스', name: '서비스 DB', technology: 'PostgreSQL', note: '', x: 810, y: 0 },
       { id: 'file', role: '로컬 로그 파일', name: '서비스 로그 파일', technology: 'JSON Lines', note: '서비스 호스트의 로컬 디스크에 기록한다. 보존 기간은 아직 확인하지 않았다.', x: 0, y: 220 },
       { id: 'agent', role: '로그 수집기', name: '로그 수집기', technology: 'Vector', note: '', x: 270, y: 220 },

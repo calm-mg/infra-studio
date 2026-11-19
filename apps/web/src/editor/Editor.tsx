@@ -35,9 +35,27 @@ function nextPosition(blocks: Block[], flow: FlowInstance | null, area: DOMRect 
   return position;
 }
 
+// Keep the original array for no-op input (for example, ending a drag at the same coordinates).
+function patchItems<T>(items: T[], patchFor: (item: T) => Partial<T> | undefined): T[] {
+  let next: T[] | undefined;
+  items.forEach((item, i) => {
+    const patch = patchFor(item);
+    if (!patch) return;
+    for (const key in patch) {
+      if (item[key] !== patch[key]) {
+        next ??= items.slice();
+        next[i] = { ...item, ...patch };
+        break;
+      }
+    }
+  });
+  return next ?? items;
+}
+
 export default function Editor() {
   const [initial] = useState(openLastDesign);
-  const [doc, setDoc] = useState(initial.doc);
+  const [work, setWork] = useState<{ doc: Design; beforeDeletion?: Design }>(initial);
+  const { doc, beforeDeletion } = work;
   const [selection, select] = useState<Selection>(null);
   const [source, setSource] = useState<string | null>(null);
   const [error, setError] = useState(initial.error);
@@ -49,10 +67,11 @@ export default function Editor() {
   const importSequence = useRef(0);
   useLayoutEffect(() => { latest.current = doc; }, [doc]);
   useEffect(() => {
-    if (doc === initial.doc) return;
-    try { localStorage.setItem(storageKey, serializeDesign(doc)); setSaveFailed(false); }
+    // Don't overwrite unreadable startup data. Restoring the initial doc is still a new edit.
+    if (work === initial) return;
+    try { localStorage.setItem(storageKey, serializeDesign(work.doc)); setSaveFailed(false); }
     catch { setSaveFailed(true); }
-  }, [doc, initial]);
+  }, [work, initial]);
   useEffect(() => {
     if (!source) return;
     function escape(event: KeyboardEvent) { if (event.key === 'Escape') setSource(null); }
@@ -60,12 +79,20 @@ export default function Editor() {
     return () => document.removeEventListener('keydown', escape);
   }, [source]);
 
+  const editDoc = useCallback((apply: (current: Design) => Design) => {
+    setWork(current => {
+      const next = apply(current.doc);
+      return next.blocks === current.doc.blocks && next.relations === current.doc.relations
+        ? current : { doc: next };
+    });
+  }, []);
+
   function clear() { select(null); setSource(null); }
   function replace(next: Design, description: string) {
     ++importSequence.current;
     if (latest.current.blocks.length && !window.confirm(`${description}(으)로 현재 설계를 바꿀까요? 현재 작업을 보관하려면 취소한 뒤 파일로 내보내세요.`)) return;
     flow.current = null;
-    setDoc(next); clear(); setError(''); resetCanvas(k => k + 1);
+    setWork({ doc: next }); clear(); setError(''); resetCanvas(k => k + 1);
   }
   function addBlock(role: string, position?: XYPosition) {
     const id = newId();
@@ -73,21 +100,32 @@ export default function Editor() {
     let name = role;
     for (let i = 2; names.has(name); i++) name = `${role} ${i}`;
     const block = { id, role, name, technology: '', note: '', ...(position ?? nextPosition(doc.blocks, flow.current, area.current?.getBoundingClientRect())) };
-    setDoc(d => ({ ...d, blocks: [...d.blocks, block] }));
+    editDoc(d => ({ ...d, blocks: [...d.blocks, block] }));
     setSource(null); select({ kind: 'block', id });
   }
   const connect = useCallback((from: string, to: string) => {
     const relation = { id: newId(), from, to, label: '' };
-    setDoc(d => ({ ...d, relations: [...d.relations, relation] }));
+    editDoc(d => ({ ...d, relations: [...d.relations, relation] }));
     setSource(null); select({ kind: 'relation', id: relation.id });
-  }, []);
+  }, [editDoc]);
   const pick = useCallback((id: string) => {
     if (source !== null) connect(source, id);
     else select({ kind: 'block', id });
   }, [source, connect]);
   function deleteSelection() {
     if (!selection) return;
-    setDoc(d => selection.kind === 'block' ? removeBlock(d, selection.id) : { ...d, relations: d.relations.filter(r => r.id !== selection.id) });
+    if (selection.kind === 'block') {
+      setWork(current => {
+        const next = removeBlock(current.doc, selection.id);
+        return next === current.doc ? current : { doc: next, beforeDeletion: current.doc };
+      });
+    } else {
+      editDoc(d => ({ ...d, relations: d.relations.filter(r => r.id !== selection.id) }));
+    }
+    clear();
+  }
+  function undoDeletion() {
+    setWork(current => current.beforeDeletion ? { doc: current.beforeDeletion } : current);
     clear();
   }
   async function openFile(event: ChangeEvent<HTMLInputElement>) {
@@ -130,15 +168,17 @@ export default function Editor() {
             <span className={`role-icon ${style.tone}`}><Icon name={style.icon} size={16} /></span><span>{role}</span><span className="role-plus"><Icon name="plus" size={12} /></span>
           </button>; })}</section>)}</div>
       </aside>
-      <main className="drafting-area"><div className="canvas-heading"><div><span className="eyebrow">WORKSPACE / 01</span><h1>설계 캔버스</h1></div><div className="counts"><span>블록 <b>{doc.blocks.length}</b></span><i /> <span>관계 <b>{doc.relations.length}</b></span></div></div>
+      <main className="drafting-area"><div className="canvas-heading"><div><span className="eyebrow">WORKSPACE / 01</span><h1>설계 캔버스</h1></div>
+        {beforeDeletion && <button className="button" onClick={undoDeletion}>블록 삭제 되돌리기</button>}
+        <div className="counts"><span>블록 <b>{doc.blocks.length}</b></span><i /> <span>관계 <b>{doc.relations.length}</b></span></div></div>
         <div ref={area} className="canvas-holder"><Canvas key={canvasKey} doc={doc} selection={selection} source={source}
           onReady={instance => { flow.current = instance; }} onPick={pick} onEdge={id => { setSource(null); select({ kind: 'relation', id }); }}
-          onClear={clear} onConnect={connect} onMove={positions => setDoc(d => ({ ...d, blocks: d.blocks.map(b => { const p = positions.get(b.id); return p ? { ...b, ...p } : b; }) }))}
+          onClear={clear} onConnect={connect} onMove={positions => editDoc(d => ({ ...d, blocks: patchItems(d.blocks, b => positions.get(b.id)) }))}
           onDropRole={addBlock} onExample={example} onCancelLink={() => setSource(null)} /></div>
       </main>
       <Inspector doc={doc} selection={selection} connecting={source !== null} onLink={() => setSource(source || selection?.kind !== 'block' ? null : selection.id)}
-        onBlock={(id, changes) => setDoc(d => ({ ...d, blocks: d.blocks.map(b => b.id === id ? { ...b, ...changes } : b) }))}
-        onRelation={(id, changes) => setDoc(d => ({ ...d, relations: d.relations.map(r => r.id === id ? { ...r, ...changes } : r) }))} onDelete={deleteSelection} />
+        onBlock={(id, changes) => editDoc(d => ({ ...d, blocks: patchItems(d.blocks, b => b.id === id ? changes : undefined) }))}
+        onRelation={(id, changes) => editDoc(d => ({ ...d, relations: patchItems(d.relations, r => r.id === id ? changes : undefined) }))} onDelete={deleteSelection} />
     </div>
     <footer className="status-bar"><span className={saveFailed ? 'save-warning' : ''} role="status"><i />{saveFailed ? '로컬 저장 실패 · 파일로 보관하세요' : '이 브라우저에 자동 저장'}</span><span>공유할 때는 설계 파일을 내보내세요.</span></footer>
   </div>;

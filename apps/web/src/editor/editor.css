@@ -78,6 +78,7 @@ h1, h2, h3, p { margin: 0; }
 .node-face strong, .node-face small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .node-face strong { margin: 1px 0; font-size: 15px; letter-spacing: -.03em; color: #21362a; line-height: 1.5; }
 .node-face small { color: #67756c; font-size: 11px; line-height: 1.35; }
+.node-face .node-location { margin-top: 3px; color: #334c3d; font-weight: 600; }
 .diagram-node .react-flow__handle { width: 10px; height: 10px; z-index: 1; background: #fff; border: 2px solid #74927d; }
 .diagram-node .react-flow__handle-right { background: #688b72; }
 .diagram-node .react-flow__handle:hover { border-color: #21683b; background: #bbd9c2; }
