@@ -3,6 +3,7 @@ export type Block = {
   role: string;
   name: string;
   technology: string;
+  runtimeLocation?: string;
   note: string;
   x: number;
   y: number;
@@ -52,6 +53,7 @@ function decode(value: unknown): Design {
     return {
       id: uniqueId(b.id, ids), role: text(b.role, 'role'), name: text(b.name, 'name'),
       technology: text(b.technology, 'technology'), note: text(b.note, 'note'),
+      ...(b.runtimeLocation === undefined ? {} : { runtimeLocation: text(b.runtimeLocation, 'runtimeLocation') }),
       x: coordinate(b.x), y: coordinate(b.y),
     };
   });

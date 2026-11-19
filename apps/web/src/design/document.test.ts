@@ -4,7 +4,7 @@ import { emptyDesign, parseDesign, removeBlock, serializeDesign, type Block, typ
 const block: Block = { id: 'a', role: '사용자 역할', name: ' 진입점 ', technology: '', note: '첫 줄\n둘째 줄', x: -40.25, y: 120.5 };
 const doc: Design = {
   schemaVersion: 1,
-  blocks: [block, { ...block, id: 'b', technology: '자유 입력' }, { ...block, id: 'c' }],
+  blocks: [block, { ...block, id: 'b', technology: '자유 입력', runtimeLocation: '공용 클러스터' }, { ...block, id: 'c' }],
   relations: [
     { id: 'ab', from: 'a', to: 'b', label: '요청 전달' },
     { id: 'ca', from: 'c', to: 'a', label: '응답' },
@@ -20,13 +20,20 @@ describe('design documents', () => {
     expect(emptyDesign()).toEqual({ schemaVersion: 1, blocks: [], relations: [] });
   });
 
+  it('opens a version 1 file saved before runtime location was introduced', () => {
+    const oldFile = '{"schemaVersion":1,"blocks":[{"id":"svc","role":"앱 서버","name":"서비스","technology":"","note":"기존 메모","x":16,"y":20}],"relations":[]}';
+    const reopened = parseDesign(oldFile);
+    expect(reopened.blocks[0]).not.toHaveProperty('runtimeLocation');
+    expect(JSON.parse(serializeDesign(reopened))).toEqual(JSON.parse(oldFile));
+  });
+
   it('round-trips every editable field, placement and edge in display order', () => {
     expect(parseDesign(serializeDesign(doc))).toEqual(doc);
   });
 
   it('serializes independently of input key order', () => {
     const reordered = { relations: doc.relations.map(({ id, label, from, to }) => ({ to, label, from, id })),
-      blocks: doc.blocks.map(({ id, role, name, technology, note, x, y }) => ({ y, x, note, technology, name, role, id })),
+      blocks: doc.blocks.map(({ id, role, name, technology, runtimeLocation, note, x, y }) => ({ y, x, note, runtimeLocation, technology, name, role, id })),
       schemaVersion: doc.schemaVersion };
     expect(serializeDesign(reordered)).toBe(serializeDesign(doc));
   });
@@ -42,6 +49,7 @@ describe('design documents', () => {
       `missing ${key}`, JSON.stringify({ ...emptyDesign(), blocks: [{ ...block, [key]: undefined }] }),
     ]),
     ['non-string note', JSON.stringify({ ...emptyDesign(), blocks: [{ ...block, note: 12 }] })],
+    ['non-string runtime location', JSON.stringify({ ...emptyDesign(), blocks: [{ ...block, runtimeLocation: 42 }] })],
     ['non-numeric coordinate', JSON.stringify({ ...emptyDesign(), blocks: [{ ...block, x: '2' }] })],
     ['overflow coordinate', JSON.stringify(doc).replace('-40.25', '1e999')],
     ['excessive coordinate', JSON.stringify(doc).replace('-40.25', '1e200')],

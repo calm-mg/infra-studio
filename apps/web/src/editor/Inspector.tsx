@@ -5,7 +5,7 @@ import Icon from './Icon';
 
 type Props = {
   doc: Design; selection: Selection; connecting: boolean; onLink: () => void;
-  onBlock: (id: string, changes: Partial<Pick<Block, 'name' | 'role' | 'technology' | 'note'>>) => void;
+  onBlock: (id: string, changes: Partial<Pick<Block, 'name' | 'role' | 'technology' | 'runtimeLocation' | 'note'>>) => void;
   onRelation: (id: string, changes: Partial<Pick<Relation, 'from' | 'to' | 'label'>>) => void;
   onDelete: () => void;
 };
@@ -24,7 +24,8 @@ export default function Inspector({ doc, selection, connecting, onLink, onBlock,
       </select></label>
       <label className="field">사용 기술<input list="technology-options" value={b.technology} onChange={e => onBlock(b.id, { technology: e.target.value })} placeholder="직접 입력 또는 선택" /></label>
       <datalist id="technology-options">{roleStyle(b.role).technologies.map(t => <option key={t} value={t} />)}</datalist>
-      <label className="field">메모<textarea rows={4} value={b.note} onChange={e => onBlock(b.id, { note: e.target.value })} placeholder="실행 위치나 확인할 점을 기록하세요." /></label>
+      <label className="field">실행 위치<input value={b.runtimeLocation ?? ''} onChange={e => onBlock(b.id, { runtimeLocation: e.target.value || undefined })} placeholder="예: EC2" /></label>
+      <label className="field">메모<textarea rows={4} value={b.note} onChange={e => onBlock(b.id, { note: e.target.value })} placeholder="확인할 점을 기록하세요." /></label>
       <div className="property-actions"><button className="button connect-action" onClick={onLink}><Icon name="connect" size={16} />{connecting ? '연결 취소' : '연결 시작'}</button>
         <p>출발 블록에서 연결을 시작하고 도착 블록을 선택하세요.</p></div>
       <button className="delete-button" onClick={onDelete}><Icon name="trash" size={15} />블록 삭제</button>

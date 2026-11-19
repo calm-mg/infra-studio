@@ -9,7 +9,7 @@ import type { Block, Design } from '../design/document';
 import Icon from './Icon';
 
 export const NODE_WIDTH = 178;
-export const NODE_HEIGHT = 80;
+export const NODE_HEIGHT = 98;
 export const roleDragType = 'application/x-infra-studio-role';
 export type StudioNode = Node<{ block: Block; pick: (id: string) => void }, 'block'>;
 export type FlowInstance = ReactFlowInstance<StudioNode, Edge>;
@@ -19,13 +19,15 @@ const fitOptions = { padding: 0.13, maxZoom: 1 };
 function BlockNode({ data, selected }: NodeProps<StudioNode>) {
   const b = data.block;
   const style = roleStyle(b.role);
+  const locationLabel = b.runtimeLocation?.trim() ? `실행 위치: ${b.runtimeLocation}` : undefined;
   return <div className={`diagram-node ${style.tone}${selected ? ' is-selected' : ''}`}>
     <Handle type="target" position={Position.Left} id="in" />
     <Handle type="target" position={Position.Top} id="top" className="route-handle" isConnectable={false} />
-    <button className="node-face" aria-label={b.name || '이름 없는 블록'} title={`${b.name}\n${b.role}${b.technology && ` · ${b.technology}`}`} onClick={() => data.pick(b.id)}>
+    <button className="node-face" aria-label={b.name || '이름 없는 블록'} aria-description={locationLabel} title={`${b.name}\n${b.role}${b.technology && ` · ${b.technology}`}${locationLabel ? `\n${locationLabel}` : ''}`} onClick={() => data.pick(b.id)}>
       <span className="node-kind"><Icon name={style.icon} size={15} />{b.role || '기타 역할'}</span>
       <strong>{b.name || '이름 없는 블록'}</strong>
       <small>{b.technology || '기술 미정'}</small>
+      {locationLabel && <small className="node-location">{locationLabel}</small>}
     </button>
     <Handle type="source" position={Position.Right} id="out" />
     <Handle type="source" position={Position.Bottom} id="bottom" className="route-handle" isConnectable={false} />
