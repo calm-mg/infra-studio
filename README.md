@@ -2,6 +2,8 @@
 
 백엔드 개발자가 팀 서비스의 블록과 연결을 그리고 요청·데이터 경로를 설명하는 **데스크톱 웹 편집기**. 설계는 브라우저에서 처리한다. 파일 전달은 복사본 전달이며 계정 동기화가 아니다.
 
+**[브라우저에서 인프라 스튜디오 열기](https://calm-mg.github.io/infra-studio/)** — 설치·SSH 터널·로그인 없이 사용한다. GitHub Pages가 편집기 파일을 제공하고, 작성한 설계는 GitHub에 게시되지 않는다. 기존 로컬 주소의 설계를 옮기려면 거기서 JSON을 내보낸 뒤 공개 주소에서 연다.
+
 [제품 범위·인수 조건](docs/product-brief.md) · [기획 단계 UI](docs/prototypes/infra-studio-v2.html) · [AI 작업 계약](AGENTS.md)
 
 ## 실행
@@ -66,6 +68,16 @@ npm run test:e2e
 - 이 공개 저장소를 새 Multibranch Pipeline에 연결하고 Script Path는 `Jenkinsfile`로 둔다. GitHub App 설치 대상에 이 저장소를 추가하고 커밋 상태 보고 권한을 확인한다. **동일 저장소의 신뢰된 브랜치와 PR만** 빌드한다. Fork PR discovery를 끄고 외부 기여자의 Jenkinsfile이나 코드를 공유 에이전트에서 자동 실행하지 않는다.
 - 기존 Ubuntu 24.04 `linux-arm64` 에이전트와 `/opt/yoom-ci`의 Node를 사용한다. 브라우저 바이너리는 Playwright가, ATK 등 네이티브 라이브러리와 한글 글꼴은 `scripts/prepare-chromium-runtime.sh`가 준비한다. 이 스크립트는 에이전트의 APT 저장소에서 필요한 패키지를 내려받아 현재 작업공간의 `artifacts/chromium-runtime/`에만 푼다. 호스트 패키지 설치·sudo·Docker가 필요 없다. 에이전트는 유효한 APT 인덱스와 패키지 미러·npm·Playwright 다운로드 접근이 필요하다. 작업공간의 라이브러리와 글꼴은 브라우저 검사 단계에서만 사용한다.
 - Jenkins의 Tests 탭에서 단위·브라우저 검사 결과를 확인한다(JUnit 플러그인 필요). 성공한 빌드는 새 세션에서 복원한 화면 `roundtrip.png`를 남긴다. 브라우저 검사 실패 시 `trace.zip`을 내려받고 `npx playwright show-trace <파일경로>`로 실패 직전 클릭과 화면을 재생한다. CI는 검증만 하며 공개 배포하지 않는다.
+
+### GitHub Pages 배포
+
+배포는 수동이다. 저장소의 Settings → Pages에서 `Deploy from a branch` → `gh-pages` → `/(root)`를 사용한다. 배포 권한이 있는 작업자가 깨끗한 `main`에서 위 검증 절차를 마친 뒤, **테스트한 `apps/web/dist/`를 재빌드하지 않고** 다음 명령으로 게시한다.
+
+```sh
+npm exec --yes --package=gh-pages@6.3.0 -- gh-pages -d apps/web/dist --nojekyll
+```
+
+`gh-pages`에는 정적 빌드 파일만 올라간다. 원본 코드·테스트 결과·사용자 설계 파일은 배포 대상이 아니다. 공개 URL에서 **익명 예제 → 서비스 백엔드 → 실행 위치: EC2**를 확인한다. SSH 터널은 배포 전 개발 버전을 확인할 때만 필요하다.
 
 ## 저장소 경계
 
