@@ -64,7 +64,7 @@ npm run test:e2e
 ### Jenkins
 
 - 이 공개 저장소를 새 Multibranch Pipeline에 연결하고 Script Path는 `Jenkinsfile`로 둔다. GitHub App 설치 대상에 이 저장소를 추가하고 커밋 상태 보고 권한을 확인한다. **동일 저장소의 신뢰된 브랜치와 PR만** 빌드한다. Fork PR discovery를 끄고 외부 기여자의 Jenkinsfile이나 코드를 공유 에이전트에서 자동 실행하지 않는다.
-- 기존 `linux-arm64` 에이전트와 `/opt/yoom-ci`의 Node를 사용한다. npm 레지스트리·Playwright 다운로드에 접근할 수 있어야 하며 Chromium OS 의존성은 호스트에 준비한다. Jenkins 컨트롤러나 Docker에서 브라우저를 실행하지 않는다.
+- 기존 Ubuntu 24.04 `linux-arm64` 에이전트와 `/opt/yoom-ci`의 Node를 사용한다. 브라우저 바이너리는 Playwright가, ATK 등 네이티브 라이브러리와 한글 글꼴은 `scripts/prepare-chromium-runtime.sh`가 준비한다. 이 스크립트는 에이전트의 APT 저장소에서 필요한 패키지를 내려받아 현재 작업공간의 `artifacts/chromium-runtime/`에만 푼다. 호스트 패키지 설치·sudo·Docker가 필요 없다. 에이전트는 유효한 APT 인덱스와 패키지 미러·npm·Playwright 다운로드 접근이 필요하다. 작업공간의 라이브러리와 글꼴은 브라우저 검사 단계에서만 사용한다.
 - Jenkins의 Tests 탭에서 단위·브라우저 검사 결과를 확인한다(JUnit 플러그인 필요). 성공한 빌드는 새 세션에서 복원한 화면 `roundtrip.png`를 남긴다. 브라우저 검사 실패 시 `trace.zip`을 내려받고 `npx playwright show-trace <파일경로>`로 실패 직전 클릭과 화면을 재생한다. CI는 검증만 하며 공개 배포하지 않는다.
 
 ## 저장소 경계
