@@ -1,0 +1,57 @@
+name: Publish verified main to Pages
+
+on: status
+
+permissions: {}
+
+jobs:
+  build:
+    # Branch and PR checks are separate in Jenkins. A branch status alone does not identify main.
+    if: >-
+      github.event.context == 'continuous-integration/jenkins/branch' &&
+      github.event.state == 'success' &&
+      github.event.sender.login == 'calm-mg-jenkins-ci[bot]' &&
+      contains(github.event.target_url, '/job/infra-studio/job/main/') &&
+      github.event.sha == github.sha
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps --only-shell chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: apps/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    concurrency: github-pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publish.outputs.page_url }}
+    steps:
+      - name: Check that the tested commit is still main
+        id: main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          echo "sha=$head" >> "$GITHUB_OUTPUT"
+      - name: Publish tested artifact
+        id: publish
+        if: steps.main.outputs.sha == github.event.sha
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
