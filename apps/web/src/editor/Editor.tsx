@@ -164,8 +164,10 @@ export default function Editor() {
       <aside className="palette side-panel" aria-label="블록 라이브러리">
         <div className="panel-heading"><span className="eyebrow">LIBRARY</span><h2>블록 라이브러리</h2><p>클릭하거나 캔버스로 끌어 놓으세요.</p></div>
         <div className="palette-scroll">{roleGroups.map(group => <section className="role-group" key={group.title}><h3>{group.title}</h3>
-          {group.roles.map(role => { const style = roleStyle(role); return <button key={role} className="palette-role" aria-label={`${role} 추가`} onClick={() => addBlock(role)} draggable onDragStart={e => { e.dataTransfer.setData(roleDragType, role); e.dataTransfer.effectAllowed = 'copy'; }}>
-            <span className={`role-icon ${style.tone}`}><Icon name={style.icon} size={16} /></span><span>{role}</span><span className="role-plus"><Icon name="plus" size={12} /></span>
+          {group.roles.map(role => { const style = roleStyle(role); return <button key={role} className="palette-role" aria-label={`${role} 추가`} aria-describedby={role === '앱 서버' ? 'app-server-examples' : undefined} onClick={() => addBlock(role)} draggable onDragStart={e => { e.dataTransfer.setData(roleDragType, role); e.dataTransfer.effectAllowed = 'copy'; }}>
+            <span className={`role-icon ${style.tone}`}><Icon name={style.icon} size={16} /></span>
+            <span>{role}{role === '앱 서버' && <small id="app-server-examples" className="role-example">예: 주문 서비스, 통계 서비스</small>}</span>
+            <span className="role-plus"><Icon name="plus" size={12} /></span>
           </button>; })}</section>)}</div>
       </aside>
       <main className="drafting-area"><div className="canvas-heading"><div><span className="eyebrow">WORKSPACE / 01</span><h1>설계 캔버스</h1></div>
