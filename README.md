@@ -67,7 +67,7 @@ npm run test:e2e
 
 - 이 공개 저장소를 새 Multibranch Pipeline에 연결하고 Script Path는 `Jenkinsfile`로 둔다. GitHub App 설치 대상에 이 저장소를 추가하고 커밋 상태 보고 권한을 확인한다. **동일 저장소의 신뢰된 브랜치와 PR만** 빌드한다. Fork PR discovery를 끄고 외부 기여자의 Jenkinsfile이나 코드를 공유 에이전트에서 자동 실행하지 않는다.
 - 기존 Ubuntu 24.04 `linux-arm64` 에이전트와 `/opt/yoom-ci`의 Node를 사용한다. 브라우저 바이너리는 Playwright가, ATK 등 네이티브 라이브러리와 한글 글꼴은 `scripts/prepare-chromium-runtime.sh`가 준비한다. 이 스크립트는 에이전트의 APT 저장소에서 필요한 패키지를 내려받아 현재 작업공간의 `artifacts/chromium-runtime/`에만 푼다. 호스트 패키지 설치·sudo·Docker가 필요 없다. 에이전트는 유효한 APT 인덱스와 패키지 미러·npm·Playwright 다운로드 접근이 필요하다. 작업공간의 라이브러리와 글꼴은 브라우저 검사 단계에서만 사용한다.
-- Jenkins의 Tests 탭에서 단위·브라우저 검사 결과를 확인한다(JUnit 플러그인 필요). 성공한 빌드는 새 세션에서 복원한 화면 `roundtrip.png`를 남긴다. 브라우저 검사 실패 시 `trace.zip`을 내려받고 `npx playwright show-trace <파일경로>`로 실패 직전 클릭과 화면을 재생한다. CI는 검증만 하며 공개 배포하지 않는다.
+- Jenkins의 Tests 탭에서 단위·브라우저 검사 결과를 확인한다(JUnit 플러그인 필요). 성공한 빌드는 새 세션에서 복원한 화면 `roundtrip.png`를 남긴다. 브라우저 검사 실패 시 `trace.zip`을 내려받고 `npx playwright show-trace <파일경로>`로 실패 직전 클릭과 화면을 재생한다. Jenkins는 검사 상태를 GitHub에 보고하며 Pages 쓰기 권한은 필요 없다.
 
 ### 작업 브랜치와 병합
 
@@ -75,15 +75,13 @@ npm run test:e2e
 
 기본 절차는 **작업 브랜치 → PR → 사용자 검수 → 명시적 병합 지시**다. 로컬 훅은 GitHub에서의 병합을 통제하지 않는다. 에이전트의 병합 승인 기준은 [작업 계약](AGENTS.md#브랜치와-병합-승인)을 따른다.
 
-### GitHub Pages 배포
+### GitHub Pages 자동 배포
 
-배포는 수동이다. 저장소의 Settings → Pages에서 `Deploy from a branch` → `gh-pages` → `/(root)`를 사용한다. 배포 권한이 있는 작업자가 깨끗한 `main`에서 위 검증 절차를 마친 뒤, **테스트한 `apps/web/dist/`를 재빌드하지 않고** 다음 명령으로 게시한다.
+개발용 공개 사이트는 별도 배포 승인 없이 갱신한다. PR의 CI 성공만으로는 배포하지 않는다. 병합된 **현재 `main` 커밋**에 대해 Jenkins가 성공 상태를 보내면 [Pages 워크플로](.github/workflows/pages.yml)가 그 SHA를 빌드한다. Chromium E2E가 통과한 `apps/web/dist/`만 재빌드 없이 게시한다. 검사 실패 시 이전 사이트를 유지하며, 게시 직전에 `main`이 바뀌었다면 이전 커밋은 건너뛴다.
 
-```sh
-npm exec --yes --package=gh-pages@6.3.0 -- gh-pages -d apps/web/dist --nojekyll
-```
-
-`gh-pages`에는 정적 빌드 파일만 올라간다. 원본 코드·테스트 결과·사용자 설계 파일은 배포 대상이 아니다. 공개 URL에서 **익명 예제 → 서비스 백엔드 → 실행 위치: EC2**를 확인한다. SSH 터널은 배포 전 개발 버전을 확인할 때만 필요하다.
+- 저장소 설정: **Settings → Pages → Source: GitHub Actions**. **Environments → github-pages**에서 `main` 브랜치 배포를 허용한다. 기존 `gh-pages` 브랜치는 삭제하거나 갱신할 필요가 없다.
+- 배포 확인: **Actions → Publish verified main to Pages**에서 해당 커밋의 `deploy` 결과를 본다. PR·다른 브랜치·진행 중인 상태에 의한 실행은 건너뛰는 것이 정상이다. 공개 URL에서 **익명 예제 → 서비스 백엔드 → 실행 위치: EC2**를 확인할 수 있다.
+- 배포만 실패했다면 같은 `main` 커밋의 실패한 워크플로를 다시 실행한다. 변경을 되돌리려면 되돌림 PR을 병합해 같은 검증·배포 절차를 거친다.
 
 ## 저장소 경계
 
