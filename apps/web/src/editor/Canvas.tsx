@@ -23,6 +23,7 @@ function BlockNode({ data, selected }: NodeProps<StudioNode>) {
   return <div className={`diagram-node ${style.tone}${selected ? ' is-selected' : ''}`}>
     <Handle type="target" position={Position.Left} id="in" />
     <Handle type="target" position={Position.Top} id="top" className="route-handle" isConnectable={false} />
+    <Handle type="target" position={Position.Bottom} id="in-bottom" className="route-handle" isConnectable={false} />
     <button className="node-face" aria-label={b.name || '이름 없는 블록'} aria-description={locationLabel} title={`${b.name}\n${b.role}${b.technology && ` · ${b.technology}`}${locationLabel ? `\n${locationLabel}` : ''}`} onClick={() => data.pick(b.id)}>
       <span className="node-kind"><Icon name={style.icon} size={15} />{b.role || '기타 역할'}</span>
       <strong>{b.name || '이름 없는 블록'}</strong>
@@ -31,6 +32,7 @@ function BlockNode({ data, selected }: NodeProps<StudioNode>) {
     </button>
     <Handle type="source" position={Position.Right} id="out" />
     <Handle type="source" position={Position.Bottom} id="bottom" className="route-handle" isConnectable={false} />
+    <Handle type="source" position={Position.Top} id="out-top" className="route-handle" isConnectable={false} />
   </div>;
 }
 const nodeTypes = { block: BlockNode };
@@ -77,11 +79,17 @@ export default function Canvas({ doc, selection, source, onReady, onPick, onEdge
     return doc.relations.map(r => {
       const a = blocks.get(r.from)!;
       const b = blocks.get(r.to)!;
-      const downstream = b.y > a.y + NODE_HEIGHT + 20 && b.x < a.x + NODE_WIDTH;
+      // Approach a separate row from above/below, not along its horizontal connections.
+      const rowGap = NODE_HEIGHT + 20; // clearance for the smoothstep bend
+      const below = b.y > a.y + rowGap;
+      const above = b.y < a.y - rowGap;
+      const targetHandle = below ? 'top' : above ? 'in-bottom' : 'in';
+      const exitsRight = b.x >= a.x + NODE_WIDTH;
+      const sourceHandle = exitsRight ? 'out' : below ? 'bottom' : above ? 'out-top' : 'out';
       const selected = selection?.kind === 'relation' && selection.id === r.id;
       const color = selected ? '#176949' : '#6c8178';
       return {
-        id: r.id, source: r.from, target: r.to, type: 'smoothstep', sourceHandle: downstream ? 'bottom' : 'out', targetHandle: downstream ? 'top' : 'in',
+        id: r.id, source: r.from, target: r.to, type: 'smoothstep', sourceHandle, targetHandle,
         label: r.label || '관계', selected, ariaLabel: `${a.name} → ${b.name}: ${r.label || '관계'}`,
         markerEnd: { type: MarkerType.ArrowClosed, color, width: 18, height: 18 }, style: { stroke: color, strokeWidth: selected ? 2.3 : 1.6 },
         labelStyle: { fill: selected ? '#176949' : '#465c51', fontWeight: 600, fontSize: 11 },
